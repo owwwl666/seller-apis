@@ -12,7 +12,32 @@ logger = logging.getLogger(__file__)
 
 
 def get_product_list(last_id, client_id, seller_token):
-    """Получить список товаров магазина озон"""
+    """Gets a list of Ozone store products.
+
+    Args:
+        last_id (str): The ID of the last value on the page
+        client_id (str): Client ID
+        seller_token (str): API key
+
+    Returns:
+        dict: Product data dictionary
+
+    Raises:
+        TypeError
+
+    Examples:
+        {
+            "items": [
+                        {
+                            "product_id": 223681945,
+                            "offer_id": "136748"
+                        }
+                    ],
+            total": 1,
+            "last_id": "bnVсbA=="
+        }
+
+    """
     url = "https://api-seller.ozon.ru/v2/product/list"
     headers = {
         "Client-Id": client_id,
@@ -32,7 +57,22 @@ def get_product_list(last_id, client_id, seller_token):
 
 
 def get_offer_ids(client_id, seller_token):
-    """Получить артикулы товаров магазина озон"""
+    """Gets the SKUs of the Ozone store products.
+
+    Args:
+        client_id (str): Client ID
+        seller_token (str): API key
+
+    Returns:
+        list: List of product SKUs
+
+    Raises:
+        TypeError
+
+    Examples:
+        ["136748"]
+
+    """
     last_id = ""
     product_list = []
     while True:
@@ -49,7 +89,36 @@ def get_offer_ids(client_id, seller_token):
 
 
 def update_price(prices: list, client_id, seller_token):
-    """Обновить цены товаров"""
+    """Update product prices.
+
+    Args:
+        prices (list): Price list
+        client_id (str): Client ID
+        seller_token (str): API key
+
+    Returns:
+        dict: List of product SKUs
+
+    Raises:
+        TypeError
+
+    Examples:
+        {
+            "prices": [
+                {
+                    "auto_action_enabled": "UNKNOWN",
+                    "currency_code": "RUB",
+                    "min_price": "800",
+                    "offer_id": "",
+                    "old_price": "0",
+                    "price": "1448",
+                    "price_strategy_enabled": "UNKNOWN",
+                    "product_id": 1386
+                }
+            ]
+        }
+
+    """
     url = "https://api-seller.ozon.ru/v1/product/import/prices"
     headers = {
         "Client-Id": client_id,
@@ -62,7 +131,31 @@ def update_price(prices: list, client_id, seller_token):
 
 
 def update_stocks(stocks: list, client_id, seller_token):
-    """Обновить остатки"""
+    """Refreshes the stocks.
+
+    Args:
+        stocks (list): Stocks list
+        client_id (str): Client ID
+        seller_token (str): API key
+
+    Returns:
+        dict: Stocks data dictionary
+
+    Raises:
+        TypeError
+
+    Examples:
+        {
+            "stocks": [
+                {
+                    "offer_id": "PG-2404С1",
+                    "product_id": 55946,
+                    "stock": 4
+                }
+            ]
+        }
+
+    """
     url = "https://api-seller.ozon.ru/v1/product/import/stocks"
     headers = {
         "Client-Id": client_id,
@@ -75,15 +168,18 @@ def update_stocks(stocks: list, client_id, seller_token):
 
 
 def download_stock():
-    """Скачать файл ostatki с сайта casio"""
-    # Скачать остатки с сайта
+    """Downloads the ostatki file from the casio website.
+
+    Returns:
+        dict: Clock remnants
+
+    """
     casio_url = "https://timeworld.ru/upload/files/ostatki.zip"
     session = requests.Session()
     response = session.get(casio_url)
     response.raise_for_status()
     with response, zipfile.ZipFile(io.BytesIO(response.content)) as archive:
         archive.extractall(".")
-    # Создаем список остатков часов:
     excel_file = "ostatki.xls"
     watch_remnants = pd.read_excel(
         io=excel_file,
@@ -91,12 +187,32 @@ def download_stock():
         keep_default_na=False,
         header=17,
     ).to_dict(orient="records")
-    os.remove("./ostatki.xls")  # Удалить файл
+    os.remove("./ostatki.xls")
     return watch_remnants
 
 
 def create_stocks(watch_remnants, offer_ids):
-    # Уберем то, что не загружено в seller
+    """Creates a list of data for each product in the form of its article and number of copies.
+
+    Args:
+        watch_remnants (dict): Clock remnants
+        offer_ids (list): List of product SKUs
+
+    Returns:
+        list: Stocks data list
+
+    Raises:
+        TypeError
+
+    Examples:
+        [
+            {
+               "offer_id": "136748",
+                "stock": 0
+            }
+        ]
+
+    """
     stocks = []
     for watch in watch_remnants:
         if str(watch.get("Код")) in offer_ids:
@@ -109,13 +225,37 @@ def create_stocks(watch_remnants, offer_ids):
                 stock = int(watch.get("Количество"))
             stocks.append({"offer_id": str(watch.get("Код")), "stock": stock})
             offer_ids.remove(str(watch.get("Код")))
-    # Добавим недостающее из загруженного:
     for offer_id in offer_ids:
         stocks.append({"offer_id": offer_id, "stock": 0})
     return stocks
 
 
 def create_prices(watch_remnants, offer_ids):
+    """Forms the price of goods.
+
+    Args:
+        watch_remnants (dict): Clock remnants
+        offer_ids (list): List of product SKUs
+
+    Returns:
+        list: Prices data list
+
+    Raises:
+        TypeError
+
+    Examples:
+        [
+            {
+               "auto_action_enabled": "UNKNOWN",
+                "currency_code": "RUB",
+                "offer_id": "136748",
+                "old_price": "0",
+                "price": 5990,
+            }
+        ]
+
+    """
+
     prices = []
     for watch in watch_remnants:
         if str(watch.get("Код")) in offer_ids:
@@ -131,17 +271,72 @@ def create_prices(watch_remnants, offer_ids):
 
 
 def price_conversion(price: str) -> str:
-    """Преобразовать цену. Пример: 5'990.00 руб. -> 5990"""
+    """Converts the price to a specific format.
+
+    Args:
+        price (str) : Numeric value in string format
+
+    Returns:
+        str: Numeric value in string format
+
+    Raises:
+        AttributeError: 'float' object has no attribute 'split'
+        TypeError: price_conversion() missing 1 required positional argument: 'price'
+
+    Examples:
+        >>> price_conversion("5'990.00 руб.")
+        5990
+
+    """
     return re.sub("[^0-9]", "", price.split(".")[0])
 
 
 def divide(lst: list, n: int):
-    """Разделить список lst на части по n элементов"""
+    """Splits the list lst into parts of n elements.
+
+    Args:
+        lst (list): List
+        n (int): Amount of elements
+
+    Returns:
+        list
+
+    Raises:
+        TypeError
+
+    """
     for i in range(0, len(lst), n):
-        yield lst[i : i + n]
+        yield lst[i: i + n]
 
 
 async def upload_prices(watch_remnants, client_id, seller_token):
+    """Assigns prices for each product.
+
+    Returns the new prices for each item.
+
+    Args:
+        watch_remnants (dict): Clock remnants
+        client_id (str): Client ID
+        seller_token (str): API key
+
+    Returns:
+        list: Prices data list
+
+    Raises:
+        TypeError
+
+    Examples:
+        [
+            {
+               "auto_action_enabled": "UNKNOWN",
+                "currency_code": "RUB",
+                "offer_id": "136748",
+                "old_price": "0",
+                "price": 5990,
+            }
+        ]
+
+    """
     offer_ids = get_offer_ids(client_id, seller_token)
     prices = create_prices(watch_remnants, offer_ids)
     for some_price in list(divide(prices, 1000)):
@@ -150,6 +345,38 @@ async def upload_prices(watch_remnants, client_id, seller_token):
 
 
 async def upload_stocks(watch_remnants, client_id, seller_token):
+    """Assigns the remaining quantity for each item.
+
+    Args:
+        watch_remnants (dict): Clock remnants
+        client_id (str): Client ID
+        seller_token (str): API key
+
+    Returns:
+        tuple: Products left in stock, Product stocks
+
+    Raises:
+        TypeError
+
+    Examples:
+        (
+            [
+                {
+                   "offer_id": "136748",
+                    "stock": 4
+                }
+            ],
+
+            [
+                {
+                   "offer_id": "55",
+                    "stock": 16
+                }
+            ]
+                    
+        )
+
+    """
     offer_ids = get_offer_ids(client_id, seller_token)
     stocks = create_stocks(watch_remnants, offer_ids)
     for some_stock in list(divide(stocks, 100)):
