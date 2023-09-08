@@ -24,8 +24,9 @@ def get_product_list(last_id, client_id, seller_token):
 
     Raises:
         TypeError
+        requests.exceptions
 
-    Examples:
+    Correct Example:
         {
             "items": [
                         {
@@ -35,6 +36,18 @@ def get_product_list(last_id, client_id, seller_token):
                     ],
             total": 1,
             "last_id": "bnVсbA=="
+        }
+
+    Incorrect Example:
+        {
+            "code": 0,
+            "details": [
+                {
+                    "typeUrl": "string",
+                    "value": "string"
+                }
+            ],
+            "message": "string"
         }
 
     """
@@ -101,8 +114,9 @@ def update_price(prices: list, client_id, seller_token):
 
     Raises:
         TypeError
+        requests.exceptions
 
-    Examples:
+    Correct Example:
         {
             "prices": [
                 {
@@ -116,6 +130,18 @@ def update_price(prices: list, client_id, seller_token):
                     "product_id": 1386
                 }
             ]
+        }
+
+    Incorrect Example:
+        {
+            "code": 0,
+            "details": [
+                {
+                    "typeUrl": "string",
+                    "value": "string"
+                }
+            ],
+            "message": "string"
         }
 
     """
@@ -143,8 +169,9 @@ def update_stocks(stocks: list, client_id, seller_token):
 
     Raises:
         TypeError
+        requests.exceptions
 
-    Examples:
+    Correct Example:
         {
             "stocks": [
                 {
@@ -153,6 +180,18 @@ def update_stocks(stocks: list, client_id, seller_token):
                     "stock": 4
                 }
             ]
+        }
+
+    Incorrect Example:
+        {
+            "code": 0,
+            "details": [
+                {
+                    "typeUrl": "string",
+                    "value": "string"
+                }
+            ],
+            "message": "string"
         }
 
     """
@@ -172,6 +211,9 @@ def download_stock():
 
     Returns:
         dict: Clock remnants
+
+    Raises:
+        requests.exceptions
 
     """
     casio_url = "https://timeworld.ru/upload/files/ostatki.zip"
@@ -358,7 +400,7 @@ async def upload_stocks(watch_remnants, client_id, seller_token):
     Raises:
         TypeError
 
-    Examples:
+    Example:
         (
             [
                 {
