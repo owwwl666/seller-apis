@@ -11,6 +11,40 @@ logger = logging.getLogger(__file__)
 
 
 def get_product_list(page, campaign_id, access_token):
+    """Gets a list of Yandex Market store products.
+
+    Args:
+        page (str): ID of the results page
+        campaign_id (int): Campaign ID and Store ID
+        access_token (str): Employee token
+
+    Returns:
+        dict: Product data dictionary
+
+    Raises:
+        TypeError
+        requests.exceptions
+
+    Сorrect Example:
+        {
+            "paging": {
+                "nextPageToken": "string",
+                "prevPageToken": "string"
+            }, ...
+        }
+
+    Incorrect Example:
+        {
+            "status": "OK",
+            "errors": [
+                        {
+                            "code": "string",
+                            "message": "string"
+                        }
+                    ]
+        }
+
+    """
     endpoint_url = "https://api.partner.market.yandex.ru/"
     headers = {
         "Content-Type": "application/json",
@@ -30,6 +64,38 @@ def get_product_list(page, campaign_id, access_token):
 
 
 def update_stocks(stocks, campaign_id, access_token):
+    """Refreshes the stocks.
+
+        Args:
+            stocks (list): Stocks list
+            campaign_id (int): Campaign ID and Store ID
+            access_token (str): Employee token
+
+        Returns:
+            dict: Stocks data dictionary
+
+        Raises:
+            TypeError
+            requests.exceptions
+
+        Сorrect Example:
+            {
+                "status": "OK"
+            }
+
+
+        Incorrect Example:
+            {
+                "status": "OK",
+                "errors": [
+                        {
+                            "code": "string",
+                            "message": "string"
+                        }
+                ]
+            }
+
+        """
     endpoint_url = "https://api.partner.market.yandex.ru/"
     headers = {
         "Content-Type": "application/json",
@@ -46,6 +112,38 @@ def update_stocks(stocks, campaign_id, access_token):
 
 
 def update_price(prices, campaign_id, access_token):
+    """Update product prices.
+
+        Args:
+            prices (list): Price list
+            campaign_id (int): Campaign ID and Store ID
+            access_token (str): Employee token
+
+        Returns:
+            dict: List of product SKUs
+
+        Raises:
+            TypeError
+            requests.exceptions
+
+        Сorrect Example:
+            {
+                "status": "OK"
+            }
+
+
+        Incorrect Example:
+            {
+                "status": "OK",
+                "errors": [
+                        {
+                            "code": "string",
+                            "message": "string"
+                        }
+                ]
+            }
+
+        """
     endpoint_url = "https://api.partner.market.yandex.ru/"
     headers = {
         "Content-Type": "application/json",
@@ -62,7 +160,22 @@ def update_price(prices, campaign_id, access_token):
 
 
 def get_offer_ids(campaign_id, market_token):
-    """Получить артикулы товаров Яндекс маркета"""
+    """Gets the SKUs of the Yandex Market store products.
+
+    Args:
+        campaign_id (int): Campaign ID and Store ID
+        market_token (str): Employee token
+
+    Returns:
+        list: List of product SKUs
+
+    Raises:
+        TypeError
+
+    Examples:
+        ["136748",...]
+
+    """
     page = ""
     product_list = []
     while True:
@@ -78,7 +191,35 @@ def get_offer_ids(campaign_id, market_token):
 
 
 def create_stocks(watch_remnants, offer_ids, warehouse_id):
-    # Уберем то, что не загружено в market
+    """Creates a list of data for each product in the form of its article and number of copies.
+
+        Args:
+            watch_remnants (dict): Clock remnants
+            offer_ids (list): List of product SKUs
+            warehouse_id (int): Warehouse ID
+
+        Returns:
+            list: Stocks data list
+
+        Raises:
+            TypeError
+
+        Examples:
+            [
+                {
+                    "sku": '145',
+                    "warehouseId": 0,
+                    "items": [
+                        {
+                            "count": 0,
+                            "type": "FIT",
+                            "updatedAt": "2022-12-29T18:02:01Z",
+                        }
+                    ],
+                },...
+            ]
+
+        """
     stocks = list()
     date = str(datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z")
     for watch in watch_remnants:
@@ -104,7 +245,7 @@ def create_stocks(watch_remnants, offer_ids, warehouse_id):
                 }
             )
             offer_ids.remove(str(watch.get("Код")))
-    # Добавим недостающее из загруженного:
+
     for offer_id in offer_ids:
         stocks.append(
             {
@@ -123,6 +264,30 @@ def create_stocks(watch_remnants, offer_ids, warehouse_id):
 
 
 def create_prices(watch_remnants, offer_ids):
+    """Forms the price of goods.
+
+        Args:
+            watch_remnants (dict): Clock remnants
+            offer_ids (list): List of product SKUs
+
+        Returns:
+            list: Prices data list
+
+        Raises:
+            TypeError
+
+        Examples:
+            [
+                {
+                    "id": '45',
+                    "price": {
+                        "value": 2400,
+                        "currencyId": "RUR",
+                    }
+                }
+            ]
+
+        """
     prices = []
     for watch in watch_remnants:
         if str(watch.get("Код")) in offer_ids:
@@ -143,6 +308,33 @@ def create_prices(watch_remnants, offer_ids):
 
 
 async def upload_prices(watch_remnants, campaign_id, market_token):
+    """Assigns prices for each product.
+
+    Returns the new prices for each item.
+
+    Args:
+        watch_remnants (dict): Clock remnants
+        campaign_id (int): Campaign ID and Store ID
+        market_token (str): Employee token
+
+    Returns:
+        list: Prices data list
+
+    Raises:
+        TypeError
+
+    Examples:
+        [
+            {
+                "id": '45',
+                "price": {
+                    "value": 2400,
+                    "currencyId": "RUR",
+                }
+            }
+        ]
+
+        """
     offer_ids = get_offer_ids(campaign_id, market_token)
     prices = create_prices(watch_remnants, offer_ids)
     for some_prices in list(divide(prices, 500)):
@@ -151,6 +343,54 @@ async def upload_prices(watch_remnants, campaign_id, market_token):
 
 
 async def upload_stocks(watch_remnants, campaign_id, market_token, warehouse_id):
+    """Assigns the remaining quantity for each item.
+
+    Args:
+        watch_remnants (dict): Clock remnants
+        campaign_id (int): Campaign ID and Store ID
+        market_token (str): Employee token
+        warehouse_id (int): Warehouse ID
+
+    Returns:
+        tuple: Products left in stock, Product stocks
+
+    Raises:
+        TypeError
+
+    Examples:
+        (
+
+            [
+                {
+                    "sku": '145',
+                    "warehouseId": 0,
+                    "items": [
+                        {
+                            "count": 0,
+                            "type": "FIT",
+                            "updatedAt": "2022-12-29T18:02:01Z",
+                        }
+                    ],
+                },...
+            ],
+
+            [
+                {
+                    "sku": '146',
+                    "warehouseId": 0,
+                    "items": [
+                        {
+                            "count": 5,
+                            "type": "FIT",
+                            "updatedAt": "2022-12-29T18:02:01Z",
+                        }
+                    ],
+                },...
+            ]
+
+        )
+
+        """
     offer_ids = get_offer_ids(campaign_id, market_token)
     stocks = create_stocks(watch_remnants, offer_ids, warehouse_id)
     for some_stock in list(divide(stocks, 2000)):
